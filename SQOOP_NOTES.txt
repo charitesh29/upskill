@@ -1,0 +1,666 @@
+SQOOP::
+
+SQOOP IS USED TO INGEST DATA FROM RDBMS TO HDFS AND VICE VERSA
+
+IT HAS THREE MAJOR COMMANDS::
+
+SQOOP IMPORT -->IMPORT DATA FROM RDBMS TO HDFS
+SQOOP EXPORT -->IMPORT DATA FROM HDFS  TO RDBMS
+SQOOP EVAL   -->TO EVALUATE OR TO RUN ANY COMMANDS IN SQOOP TO CONNECT TO RDBMS (EG:: SELECT THE DATA PRESENT IN RDBMS DB)
+
+===========================================================================================
+
+THE BELOW COMMANDS USED TO CONNECT TO SQOOP FROM HADOOP TERMINAL TO LIST DOWN ALL DATABESE WHICH HAS ACCESS TO USER::
+
+COMMANDS::
+
+SQOOP-LIST-DATABASES \
+--CONNECT "JDBC:MYSQL://QUICKSTART.CLOUDERA:3306" \
+--USERNAME RETAIL_DBA \
+--PASSWORD CLOUDERA
+
+Explantion::
+
+sqoop-list-databases --> Will list all databases which user has Access
+
+--connect "jdbc:mysql://quickstart.cloudera:3306" \  --> Connection string with JDBC connector which takes a host address or IP address
+(3306 is a loacl port number for MYSQL)
+
+--username retail_dba \  -->Username of the User
+
+--password cloudera      -->Password of the User
+
+===========================================================================================
+
+The below commands used to connect to sqoop from Hadoop terminal to list down all Tables which has access to user::
+
+Command::
+
+sqoop-list-tables \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username retail_dba \
+--password cloudera
+
+===========================================================================================
+
+--10.0.2.15(IP ADDRESS)
+
+--->SQOOP EVAL::
+----------------
+
+To Evaluate or To run any commands in sqoop to connect to RDBMS (EG:: Select the data present in RDBMS DB)
+
+Command::
+
+sqoop-eval \
+--connect "jdbc:mysql://10.0.2.15:3306" \
+--username retail_dba \
+--password cloudera \
+--query "select * from retail_db.customers limit 10"
+
+===========================================================================================
+
+SQOOP IMPORT::
+
+Import Data from RDBMS to HDFS
+
+SQOOP import is a Map reduce job where only mappers are used and No use of reducers(Default 4 mappers are used to split the Task)
+
+SQOOP import only works if the table has primary Key (Mappers will dividethe work based on Primary Key
+or We need to split the table (Split by)
+or The no of mappers needs to be reduced to 1 which is not recommended
+
+Command::
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /queryresult
+
+
+Explantion::
+
+--table orders \           -->which table we are using a source to ingest data into HDFS path
+--target-dir /queryresult  -->HDFS target Directory/Location details  
+
+
+In order to check the List of files in  queryresult below command used::
+-----------------------------------------------------------------------
+
+hadoop fs -ls /queryresult
+
+Note:: The No of part files will be created as equal to Mappers (EG:: IF 4 MAPPERS USED THERE WILL BE 4 PART FILES)
+
+EG::
+
+-rw-r--r--   1 cloudera supergroup          0 2023-11-01 10:01 /queryresult/_SUCCESS
+-rw-r--r--   1 cloudera supergroup     741614 2023-11-01 10:01 /queryresult/part-m-00000
+-rw-r--r--   1 cloudera supergroup     753022 2023-11-01 10:01 /queryresult/part-m-00001
+-rw-r--r--   1 cloudera supergroup     752368 2023-11-01 10:01 /queryresult/part-m-00002
+-rw-r--r--   1 cloudera supergroup     752940 2023-11-01 10:01 /queryresult/part-m-00003
+
+In order to check the DATA in Target Directory below command used::
+-------------------------------------------------------------------
+
+hadoop fs -cat /queryresult/*
+
+EG::
+
+68880,2014-07-13 00:00:00.0,1117,COMPLETE
+68881,2014-07-19 00:00:00.0,2518,PENDING_PAYMENT
+68882,2014-07-22 00:00:00.0,10000,ON_HOLD
+68883,2014-07-23 00:00:00.0,5533,COMPLETE
+
+
+In order to reduce the No of Mappers if there is no primary Key defined in Table below command is used::(-m 1) Needs to be added
+---------------------------------------------------------------------------------------------------------------------------------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/trendytech" \
+--username root \
+--password cloudera \
+--table people \
+-m 1 \
+--target-dir /peopleresult
+
+
+hadoop fs -ls /peopleresult
+
+
+-rw-r--r--   1 cloudera supergroup          0 2023-11-01 10:15 /peopleresult/_SUCCESS
+-rw-r--r--   1 cloudera supergroup        143 2023-11-01 10:15 /peopleresult/part-m-00000
+
+hadoop fs -cat /peopleresult/*
+
+101,Rao,Mohan,whitefeild,banglore
+102,Reddy,Srinivas,habala,Hyderabad
+103,Sharma,Amit,Marthala,banglore
+104,Bhargav,Ashutosh,Majestic,banglore
+
+
+In order to import all tables in RDBMS to HDFS path::
+----------------------------------------------------
+
+sqoop-import-all-tables \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+-as-sequencefile \
+-m 4 \
+--warehouse-dir /user/cloudera/sqoopdir
+
+
+-as-sequencefile \ -->File format (This is used to specify the file format befor sqooping the data and by default the Text file forat is used)
+
+
+target-dir  VS   warehouse-dir::
+-------------------------------
+
+target-dir    -->In case of target-dir the directory path mentioned as final path where we will have all part files.
+
+warehouse-dir -->In case of warehouse-dir the system will craete a sub directory within the folder specified with an Table Name Automactically 
+(It is more logical way) 
+
+===========================================================================================
+
+Available commands:
+
+  codegen            Generate code to interact with database records
+  create-hive-table  Import a table definition into Hive
+  eval               Evaluate a SQL statement and display the results
+  export             Export an HDFS directory to a database table
+  help               List available commands
+  import             Import a table from a database to HDFS
+  import-all-tables  Import tables from a database to HDFS
+  import-mainframe   Import datasets from a mainframe server to HDFS
+  job                Work with saved jobs
+  list-databases     List available databases on a server
+  list-tables        List available tables in a database
+  merge              Merge results of incremental imports
+  metastore          Run a standalone Sqoop metastore
+  version            Display version information
+
+===========================================================================================
+
+-P(I sued to hde the password which we used in above query) 
+
+sqoop-list-tables \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username retail_dba \
+-P
+
+===========================================================================================
+
+REDIRECTING THE LOGS::
+----------------------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /queryresult1 1>query.out 2>query.err
+
+Here the logs has been redirected into query.out and query.err files in current working directory ,so it can be validated/De-bugged for later uses
+
+===========================================================================================
+
+BOUNDARY QUERY::
+----------------
+
+While working with sqoop import , we know that it will work only if it has primary key in table
+
+Now the work between Mappers in splittted with help of primary key 
+
+Step iternally run when we run a sqoop import::
+
+1.The select query will fire with limit 1 in order to fetch the Metadata and build the Java File
+
+2.Using Java file it builds the Jar file
+
+3.Using the jar file it will work on validating the Max and Min value of values which is defined as primary key
+
+4.The split size is calculated as below.
+
+Split Size= (Max(Values)-Min(Values)/No of mappers
+
+EG:: If table has 10K records then split for each mappers follows below::
+
+Split Size=(10000-0)/4-->2500 records will be taken care for Each Mapper to import the Data
+
+===========================================================================================
+
+COMPRESSION TECHNIQUES::
+------------------------
+
+GZIP::
+------
+
+COMPRESS is used to import the data with compressed format so it can occupy less storage space in HDFS
+(--compress) is used to compress the data and the files are stored in .GZ format in HDFS which uses default .GZIP alogorithm   
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--compress \
+--warehouse-dir /user/cloudera/compressresult 
+
+ 
+AFTER COMPRESSION(FILE SIZE)::
+------------------------------
+ 
+-rw-r--r--   1 cloudera cloudera          0 2023-11-03 07:20 /user/cloudera/compressresult/orders/_SUCCESS
+-rw-r--r--   1 cloudera cloudera     116403 2023-11-03 07:20 /user/cloudera/compressresult/orders/part-m-00000.gz
+-rw-r--r--   1 cloudera cloudera     116338 2023-11-03 07:20 /user/cloudera/compressresult/orders/part-m-00001.gz
+-rw-r--r--   1 cloudera cloudera     116612 2023-11-03 07:20 /user/cloudera/compressresult/orders/part-m-00002.gz
+-rw-r--r--   1 cloudera cloudera     122334 2023-11-03 07:20 /user/cloudera/compressresult/orders/part-m-00003.gz
+
+
+BEFORE COMPRESSION(FILE SIZE)::
+-------------------------------
+
+-rw-r--r--   1 cloudera supergroup          0 2023-11-01 10:01 /queryresult/_SUCCESS
+-rw-r--r--   1 cloudera supergroup     741614 2023-11-01 10:01 /queryresult/part-m-00000
+-rw-r--r--   1 cloudera supergroup     753022 2023-11-01 10:01 /queryresult/part-m-00001
+-rw-r--r--   1 cloudera supergroup     752368 2023-11-01 10:01 /queryresult/part-m-00002
+-rw-r--r--   1 cloudera supergroup     752940 2023-11-01 10:01 /queryresult/part-m-00003
+
+
+BZIP::
+-----
+
+BZIP is another compression Technique used to copress the Data , which the compression ratio is slighlty grater than GZIP
+
+BZIP also requires more resources in order to compress or De-compress the Data compared to GZIP
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--compression-codec BZip2Codec \
+--warehouse-dir /user/cloudera/bzipcompress
+
+AFTER COMPRESSION(FILE SIZE)::
+------------------------------
+
+-rw-r--r--   1 cloudera cloudera          0 2023-11-03 07:29 /user/cloudera/bzipcompress/orders/_SUCCESS
+-rw-r--r--   1 cloudera cloudera      93167 2023-11-03 07:28 /user/cloudera/bzipcompress/orders/part-m-00000.bz2
+-rw-r--r--   1 cloudera cloudera      95745 2023-11-03 07:28 /user/cloudera/bzipcompress/orders/part-m-00001.bz2
+-rw-r--r--   1 cloudera cloudera      96684 2023-11-03 07:29 /user/cloudera/bzipcompress/orders/part-m-00002.bz2
+-rw-r--r--   1 cloudera cloudera     100584 2023-11-03 07:29 /user/cloudera/bzipcompress/orders/part-m-00003.bz2
+
+===========================================================================================
+
+SELECTED COLUMNS FOR IMPORT DATA::
+----------------------------------
+
+If we have limited requirement of columns to import Data from RDBMS , Then we can specify the subset of columns in import command to recive Data.
+(--columns) command is used to retrive only limied no of columns Data 
+  
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--columns customer_id,customer_fname,customer_lname \
+--compression-codec BZip2Codec \
+--warehouse-dir /user/cloudera/bzipcompress
+
+===========================================================================================
+
+BOUNDARY QUERY IF THERE IS AN OUTLIER ::
+----------------------------------------
+
+If we have an invalid entry(Outlier) with Max Value , The Mapper performance will be effected as the boundary query will be calculated as below
+
+BOUNDARY QUERY=(Max-Min)/Number of Mappers
+
+EG:: If there an outlier with 200000 As a value in primary Key.The Boundary query will be calculated as (200000-1)/4 = 49999.
+
+MAPPER 1= 1 TO 49999
+MAPPER 2= 50000 TO 99999
+MAPPER 3= 100000 TO 149999 
+MAPPER 4= 150000 TO 200000
+
+The above split the Mapper 3 will have 0  records to Process and it is not a good way of handling resources.So in order to overcome the above issue.
+
+we need to specify the boundary query in sqoop import to define Min and Max value in order to slit the task equally for each Mapper,
+
+
+COMMAND::
+---------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--boundary-query "select 1,68883" \
+--warehouse-dir /user/cloudera/bzipcompress
+
+===========================================================================================
+
+SQOOP IMPORT USING SPLIT BY::
+-----------------------------
+
+USE CASES::
+-----------
+
+--> Split by used when there is no primary key is defined and then we can use split by to divide the work between the mappers. 
+
+--> Even if primary key is defined but we may have the outliers in data and we have a alternative column which we can use a split by column.
+
+--> We need to verify the column which we are going to use as split by carefully ,we need to ensure that column is Indexed properly in order to avoid full scan.
+
+--> It is always good to use the split-by on (Numeric colmn or Integer Column)
+
+--> By default it will not allow us to use Textual column,But we can set property to allow it 
+
+(org.apache.sqoop.splitter.allow_text_splitter=true)	
+
+COMMAND::
+---------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--split-by order_id\
+--warehouse-dir /user/cloudera/bzipcompress
+
+autoreset-to-one-mapper::
+-------------------------
+
+This will work as if-else statment if there is an primary key then it will use the no of mappers defines in query to import 
+else if there is no primary key the number of mappers is reset to one ,So sqoop import will not fail.
+ 
+EG COMMAND::
+-----------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--autoreset-to-one-mapper \
+--num-mappers 8 \
+--warehouse-dir /user/cloudera/bzipcompress
+
+===========================================================================================
+
+SQOOP EXPORT::
+--------------
+
+sqoop export is to transfer the data from hdfs to rdbms database.,So we need to have the file in target dir and the same needs to be specified in command
+
+hadoop fs -mkdir /data
+hadoop fs -ls /data
+hadoop fs -put Desktop/card_trans.csv /data
+
+Command:
+--------
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/banking \
+--username root \
+--password cloudera \
+--table card_transactions \
+--export-dir /data/card_trans.csv \
+--fields-terminated-by ','  
+
+After Map-reduce job compltes to export Data the data available in banking schema card_transactions Table
+
++----------------+-----------------+-------------+---------+----------+-----------------+---------------------+---------+
+| transaction_id | card_id         | member_id   | amount  | postcode | pos_id          | transaction_dt      | status  |
++----------------+-----------------+-------------+---------+----------+-----------------+---------------------+---------+
+|              1 | 348702330256514 | 37495066290 | 9084849 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              2 | 348702330256514 | 37495066290 |  330148 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              3 | 348702330256514 | 37495066290 |  136052 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              4 | 348702330256514 | 37495066290 | 4310362 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              5 | 348702330256514 | 37495066290 | 9097094 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              6 | 348702330256514 | 37495066290 | 2291118 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              7 | 348702330256514 | 37495066290 | 4900011 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              8 | 348702330256514 | 37495066290 |  633447 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|              9 | 348702330256514 | 37495066290 | 6259303 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
+|             10 | 348702330256514 | 37495066290 |  369067 |    33946 | 614677375609919 | 11-02-2018 00:00:00 | GENUINE |
++----------------+-----------------+-------------+---------+----------+-----------------+---------------------+---------+
+
+STAGING_TABLE::
+----------------
+
+IF there is an error while sqoop export the main tbale should not be impacted or partially loaded.
+
+So we can use the staging table to load the staging table instaed of Main table.
+
+IF Job is sucess then data is loaded into staging table first then it migrates to Main Table.
+
+Command:
+--------
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/banking \
+--username root \
+--password cloudera \
+--table card_transactions \
+--staging-table card_transactions_stage \
+--export-dir /data/card_trans.csv \
+--fields-terminated-by ','  
+
+===========================================================================================
+
+Sqoop Incremental Import(Delta Load)::
+--------------------------------------
+
+SQOOP incremental Import is used when we need to retrive the data which was updated or Latest records from the Source Tables.
+
+Every time the full load is a not option to ingest complete data from source Data to HDFS path.
+
+
+
+Supports Two Types of Incremental Load::
+--------------------------------------
+
+--> Append Mode.
+
+--> LastModified Mode.
+
+
+Append Mode        --> Appned mode ideally used when there is no updated in data set ,but we have a new entries in the source Table.
+-----------
+
+LastModified Mode  -->  This Mode is used when when we have a Data which is modified and each row should have a value with its Modifiued Date as column.
+----------------
+
+COMMANDS::
+----------
+
+Append Mode::
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /user/cloudera/append \
+--incremental append \
+--check-column order_id \
+--last-value 0
+
+Log::
+----
+
+23/11/11 23:09:06 INFO mapreduce.ImportJobBase: Transferred 2.861 MB in 102.5363 seconds (28.5717 KB/sec)
+23/11/11 23:09:06 INFO mapreduce.ImportJobBase: Retrieved 68883 records.
+23/11/11 23:09:06 INFO util.AppendUtils: Creating missing output directory - orders
+23/11/11 23:09:06 INFO tool.ImportTool: Incremental import complete! To run another incremental import of all data following this import, 
+supply the following arguments:
+23/11/11 23:09:06 INFO tool.ImportTool:  --incremental append
+23/11/11 23:09:06 INFO tool.ImportTool:   --check-column order_id
+23/11/11 23:09:06 INFO tool.ImportTool:   --last-value 68883
+23/11/11 23:09:06 INFO tool.ImportTool: (Consider saving this with 'sqoop job --create')
+
+
+--> On the Next import the last value needs to be updated accordingly to start the import from that row or value. So Next load will start from that value
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /user/cloudera/append \
+--incremental append \
+--check-column order_id \
+--last-value 68883
+ 
+
+Last Modified Mode::
+----------------
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /user/cloudera/lastmodified \
+--incremental lastmodified \
+--check-column order_date \
+--last-value 0 \
+--append
+
+log::
+----
+
+23/11/14 08:14:26 INFO mapreduce.ImportJobBase: Transferred 2.861 MB in 115.748 seconds (25.3104 KB/sec)
+23/11/14 08:14:26 INFO mapreduce.ImportJobBase: Retrieved 68883 records.
+23/11/14 08:14:26 INFO util.AppendUtils: Creating missing output directory - orders
+23/11/14 08:14:26 INFO tool.ImportTool: Incremental import complete! To run another incremental import of all data following this import, supply the following arguments:
+23/11/14 08:14:26 INFO tool.ImportTool:  --incremental lastmodified
+23/11/14 08:14:26 INFO tool.ImportTool:   --check-column order_date
+23/11/14 08:14:26 INFO tool.ImportTool:   --last-value 2023-11-14 08:12:29.0
+23/11/14 08:14:26 INFO tool.ImportTool: (Consider saving this with 'sqoop job --create')
+
+--> On the Next import the last value needs to be updated 2023-11-14 08:12:29.0 to start the import from that row or value.
+So Next load will start from that value
+
+EG::
+----
+
+
+We have insterted 4 records with the last updated value in orders Table and ran the sqoop import with last value as last  updated timestamp
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /user/cloudera/lastmodified \
+--incremental lastmodified \
+--check-column order_date \
+--last-value '2023-11-14 08:12:29' \
+--append
+
+log::
+----
+
+23/11/14 08:22:56 INFO mapreduce.ImportJobBase: Transferred 168 bytes in 74.9789 seconds (2.2406 bytes/sec)
+23/11/14 08:22:56 INFO mapreduce.ImportJobBase: Retrieved 4 records.
+23/11/14 08:22:56 INFO util.AppendUtils: Appending to directory orders
+23/11/14 08:22:56 INFO util.AppendUtils: Using found partition 4
+23/11/14 08:22:56 INFO tool.ImportTool: Incremental import complete! To run another incremental import of all data following this import, supply the following arguments:
+23/11/14 08:22:56 INFO tool.ImportTool:  --incremental lastmodified
+23/11/14 08:22:56 INFO tool.ImportTool:   --check-column order_date
+23/11/14 08:22:56 INFO tool.ImportTool:   --last-value 2023-11-14 08:21:40.0
+23/11/14 08:22:56 INFO tool.ImportTool: (Consider saving this with 'sqoop job --create')
+
+
+Incrimental  lastmodified Merge Key::
+-------------------------------------
+
+Here the issue whe  we use the lastmodified incrimental load if we have a value wherethe timestamp is updated then in HDFS we will have two sets of data
+
+The merge tool allows you to combine two datasets where entries in one dataset should overwrite entries of an older dataset.
+For example, an incremental import run in last-modiﬁed mode will generate  multiple datasets in HDFS where successively newer data appears in 
+each dataset. The merge tool will "ﬂatten" two datasets into one, taking the newest available records for each primary key.
+ 
+The merge tool is typically run after an incremental import with the date-last-modiﬁed mode (sqoop import --incremental lastmodiﬁed) 
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /user/cloudera/lastmodified \
+--incremental lastmodified \
+--check-column order_date \
+--last-value '2023-11-14 08:12:29' \
+--merge-key order_id
+
+LOG::
+----
+
+-rw-r--r--   1 cloudera cloudera          0 2023-11-14 08:59 /user/cloudera/lastmodified/orders/_SUCCESS
+-rw-r--r--   1 cloudera cloudera    3000112 2023-11-14 08:59 /user/cloudera/lastmodified/orders/part-r-00000
+
+Will merge all part files into single file in the existing destination path.
+
+=====================================================================================================
+
+SQOOP JOB::
+-----------
+
+Saved jobs remember the parameters used to specify a job, so they can be re-executed by invoking the job.
+
+If a saved job is conﬁgured to perform an incremental import, 
+state regarding the most recently imported rows is updated in the saved job to allow the job to continually import only the newest rows.
+
+sqoop job \
+--create job_orders \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--warehouse-dir /data/cloudera/sqoopjob  \
+--incremental append \
+--check-column order_id \
+--last-value 0
+
+sqoop job  --list                --> To see the list of jobs availble or created 
+
+
+sqoop job  --exec job_order      --> To Exec the sqoop job    
+
+The above sqoop job requires password in run time
+In order to overcome that issue we will create a password file and give the path in job commands to overcome the run time issue.below command is used
+
+echo -n "cloudera" >> .password-file
+
+echo        --> priniting the the value
+>>          --> appneding
+.file name  --> .indicates the file is protected/hidden
+
+command:: 
+
+sqoop job \
+--create job_orders \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password-file file:///home/cloudera/.password-file \
+--table orders \
+--warehouse-dir /data/cloudera/sqoopjob  \
+--incremental append \
+--check-column order_id \
+--last-value 0
+
+-->file:// represenrs the file is in the local path .not in HDFS path..
+if we dont specify this the job will expect the file will be in HDFS and it will be errored out
+
+hadoop fs -cat /data/cloudera/sqoopjob/orders/*
+
